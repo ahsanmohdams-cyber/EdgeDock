@@ -16,13 +16,21 @@ jobs:
       - name: Find project folder
         id: p
         run: |
-          f=$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)
-          echo "dir=$(dirname "$f")" >> "$GITHUB_OUTPUT"
+          echo "--- files in repo ---"
+          find . -not -path './.git/*' -not -path './.git' | head -60
+          dir=""
+          for f in $(find . -name settings.gradle.kts -not -path './.git/*'); do
+            d=$(dirname "$f")
+            if [ -f "$d/app/build.gradle.kts" ]; then dir="$d"; break; fi
+          done
+          echo "PROJECT DIR = '$dir'"
+          if [ -z "$dir" ]; then echo "::error::Gradle project not found (settings.gradle.kts and app/build.gradle.kts missing)"; exit 1; fi
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.9" }
       - name: Build
         working-directory: ${{ steps.p.outputs.dir }}
-        run: gradle assembleDebug --no-daemon --stacktrace
+        run: gradle assembleDebug --no-daemon --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: EdgeDock-debug-apk
