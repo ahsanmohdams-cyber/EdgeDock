@@ -9,24 +9,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Unzip project
-        run: |
-          unzip -q "$(ls *.zip | head -n1)" -d project
-          DIR=$(dirname "$(find project -name settings.gradle.kts | head -n1)")
-          echo "PROJECT_DIR=$DIR" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
-      - name: Accept Android SDK licenses
+      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses and install platform
         run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          printf "\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n8933bad161af4178b1185d1a37fbf41ea5269c55\n" > "$ANDROID_HOME/licenses/android-sdk-license"
-          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: "8.9" }
-      - name: Build
-        working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle assembleDebug --no-daemon --stacktrace
+      - run: gradle assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: EdgeDock-debug-apk
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
